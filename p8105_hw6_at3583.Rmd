@@ -1,0 +1,7 @@
+---
+title: "p8105_hw6_at3583"
+author: "Alexandria D.Taylor,"
+date: "`r format(Sys.Date())`"
+output: github_document
+---
+
