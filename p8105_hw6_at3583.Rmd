@@ -124,6 +124,7 @@ or_summary <- city_models |>
     n_cross1 = sum(conf.low <= 1 & conf.high >= 1)
   )
 ```
+
 Summary: Across all cities, the adjusted odds ratios for solving homicides involving male victims range from **`r round(or_summary$min_or, 2)`** to **`r round(or_summary$max_or, 2)`**. In **`r or_summary$n_gt1`** cities, the 95% CI lies entirely above 1, indicating higher odds of case resolution for male victims; in **`r or_summary$n_lt1`** cities, the interval lies entirely below 1; and in **`r or_summary$n_cross1`** cities, the CI includes 1, suggesting no clear difference by victim sex.
 
 ## C. Plot ORs and CIs by City
@@ -147,9 +148,10 @@ city_models |>
     y = "Adjusted OR (male vs female victims)"
   )
 ```
+
 Summary: Most cities have adjusted odds ratios close to 1, suggesting similar odds of solving homicides for male and female victims after controlling for age and race. A few cities show odds ratios clearly above 1, with CIs entirely above the null, indicating higher resolution rates for male victims. Other display wide intervals that cross 1, reflecting limited sample sizes and greater data uncertainty in sex-specific differences.
 
-# Problem 2 -- Bootstrap for R^2 and \hat\beta_1 \hat\beta_2
+# Problem 2 -- Bootstrap for $R^2$ and $\hat{\beta}_1$, $\hat{\beta}_2$
   
 ```{r}
 # Load and clean Central Park data
@@ -189,3 +191,64 @@ boot_results <- boot_samples |>
 
 head(boot_results)
 ```
+
+## 95% bootstrap CIs 
+```{r}
+# 95% CI for R^2
+r2_ci <- boot_results |>
+  summarise(
+    lower = quantile(r_sq, 0.025),
+    upper = quantile(r_sq, 0.975),
+    median = median(r_sq)
+  )
+
+# 95% CI for beta1 * beta2
+beta_ci <- boot_results |>
+  summarise(
+    lower = quantile(beta_prod, 0.025),
+    upper = quantile(beta_prod, 0.975),
+    median = median(beta_prod)
+  )
+
+r2_ci
+beta_ci
+```
+
+Summary: The bootstrap distribution of R² has a median of **`r round(r2_ci$median, 3)`**, with a 95% interval from **`r round(r2_ci$lower, 3)`** to **`r round(r2_ci$upper, 3)`**. For the coefficient product \(\hat{\beta}_{tmin}\hat{\beta}_{prcp}\), the median is **`r signif(beta_ci$median, 3)`**, with a 95% interval of **(`r signif(beta_ci$lower, 3)`**, **`r signif(beta_ci$upper, 3)`)**.
+
+## Distribution Plots
+```{r}
+# Distribution plot of R^2
+boot_results |>
+  ggplot(aes(x = r_sq)) +
+  geom_histogram(
+    bins = 40,
+    fill = primary_color,
+    color = "white",
+    alpha = 0.8
+  ) +
+  labs(
+    title = "Bootstrap distribution of R²",
+    x = "R²",
+    y = "Count"
+  )
+
+# Distribution plot of beta_tmin * beta_prcp
+boot_results |>
+  ggplot(aes(x = beta_prod)) +
+  geom_histogram(
+    bins = 40,
+    fill = accent_color,
+    color = "white",
+    alpha = 0.8
+  ) +
+  labs(
+    title = "Bootstrap distribution of β₁β₂ (tmin × prcp coefficients)",
+    x = "β̂_tmin × β̂_prcp",
+    y = "Count"
+  )
+```
+
+Summary:Across the 5000 bootstrap samples, the R² values are tightly concentrated, with a median of `r round(r2_ci$median, 3)` and a 95% interval from `r round(r2_ci$lower, 3)` to `r round(r2_ci$upper, 3)`. This suggests that the linear model with *tmin* and *prcp* consistently explains a moderate proportion of the variability in *tmax* across resampled datasets.
+
+The bootstrap distribution of the product \(\hat{\beta}_{tmin}\hat{\beta}_{prcp}\) is centered around `r signif(beta_ci$median, 3)`, with a 95% interval of (`r signif(beta_ci$lower, 3)`, `r signif(beta_ci$upper, 3)`). The spread and sign of this distribution reflect both the magnitudes and directions of the *tmin* and *prcp* coefficients, illustrating the uncertainty in their combined contribution to predicting *tmax*.
