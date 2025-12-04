@@ -4,6 +4,9 @@ author: "Alexandria D.Taylor,"
 date: "`r format(Sys.Date())`"
 output: github_document
 ---
+
+**This homework explores linear modeling, logistic regression, bootstrap resampling, and cross-validated prediction using tidy R workflows.**
+
 ```{r markdown}
 knitr::opts_chunk$set(
   echo = TRUE,
@@ -59,9 +62,11 @@ homicide_city <- homicide_df |>
   ) |>
   drop_na(solved, victim_age, victim_sex, victim_race)
 ```
-Summary: The cleaned dataset contains **`r nrow(homicide_city)`** homicide records across **`r n_distinct(homicide_city$city_state)`` cities**. After excluding cities without recorded race data (Dallas, TX; Phoenix, AZ; Kansas City, MO; Tulsa, AL) and restricting the analysis to victims who are White or Black, **`r nrow(homicide_city)`** cases remain. Victim age is a numeric variable, with **`r sum(is.na(homicide_city$victim_age))`** entries originally recorded as non-numeric in the raw dataset and recorded as missing during cleaning.
 
-# Baltimore, MD – logistic regression + adjusted OR
+Summary: The cleaned dataset contains **`r nrow(homicide_city)`** homicide records across  
+**`r n_distinct(homicide_city$city_state)`** cities. After excluding Dallas, TX; Phoenix, AZ; Kansas City, MO; and Tulsa, AL, and restricting the analysis to victims who are White or Black, **`r nrow(homicide_city)`** cases remain. Victim age is stored as numeric; during cleaning, **`r sum(is.na(homicide_city$victim_age))`** records had non-numeric ages and were dropped from analysis.
+
+## A. Baltimore, MD – logistic regression and adjusted OR
 
 ```{r}
 baltimore_df <- homicide_city |>
@@ -80,3 +85,73 @@ baltimore_or <- baltimore_fit |>
 baltimore_or
 ```
 
+Summary: In Baltimore, the adjusted odds ratio for solving a homicide when a victim is **male** (compared to female victims), controlling for age and race, is **`r round(baltimore_or$estimate, 2)`**, with a 95% confidence interval (CI) of (`r round(baltimore_or$conf.low, 2)`, `r round(baltimore_or$conf.high, 2)`).
+
+## B. Logistic Regression Fitting
+```{r}
+# Nest by city_state and fit logistic regression in each city
+city_models <- homicide_city |>
+  group_by(city_state) |>
+  nest(data = -city_state) |>
+  mutate(
+    fit = map(
+      data,
+      ~ glm(
+          solved ~ victim_age + victim_sex + victim_race,
+          data = .x,
+          family = binomial()
+        )
+    ),
+    results = map(
+      fit,
+      ~ tidy(.x, exponentiate = TRUE, conf.int = TRUE)
+    )
+  ) |>
+  select(city_state, results) |>
+  unnest(results) |>
+  filter(term == "victim_sexMale") |>
+  arrange(estimate)
+
+city_models
+
+# For Summary 
+or_summary <- city_models |>
+  summarise(
+    min_or   = min(estimate),
+    max_or   = max(estimate),
+    n_gt1    = sum(conf.low > 1),
+    n_lt1    = sum(conf.high < 1),
+    n_cross1 = sum(conf.low <= 1 & conf.high >= 1)
+  )
+```
+Summary: Across all cities, the adjusted odds ratios for solving homicides involving male victims range from **`r round(or_summary$min_or, 2)`** to **`r round(or_summary$max_or, 2)`**. In **`r or_summary$n_gt1`** cities, the 95% CI lies entirely above 1, indicating higher odds of case resolution for male victims; in **`r or_summary$n_lt1`** cities, the interval lies entirely below 1; and in **`r or_summary$n_cross1`** cities, the CI includes 1, suggesting no clear difference by victim sex.
+
+## C. Plot ORs and CIs by City
+```{r}
+city_models |>
+  ggplot(aes(
+    x = reorder(city_state, estimate),
+    y = estimate
+  )) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "grey50") +
+  geom_point(color = accent_color, size = 2.5) +
+  geom_errorbar(
+    aes(ymin = conf.low, ymax = conf.high),
+    width = 0.2,
+    color = primary_color
+  ) +
+  coord_flip() +
+  labs(
+    title = "Adjusted odds ratio of solving homicides: Male vs Female victims",
+    x = "City",
+    y = "Adjusted OR (male vs female victims)"
+  )
+```
+Summary: Most cities have adjusted odds ratios close to 1, suggesting similar odds of solving homicides for male and female victims after controlling for age and race. A few cities show odds ratios clearly above 1, with CIs entirely above the null, indicating higher resolution rates for male victims. Other display wide intervals that cross 1, reflecting limited sample sizes and greater data uncertainty in sex-specific differences.
+  
+```{r}
+  
+    
+  
+  
+  
