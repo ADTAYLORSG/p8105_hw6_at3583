@@ -7,7 +7,7 @@ output: github_document
 
 **This homework explores linear modeling, logistic regression, bootstrap resampling, and cross-validated prediction using tidy R workflows.**
 
-```{r markdown}
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(
   echo = TRUE,
   message = FALSE,
@@ -67,7 +67,6 @@ Summary: The cleaned dataset contains **`r nrow(homicide_city)`** homicide recor
 **`r n_distinct(homicide_city$city_state)`** cities. After excluding Dallas, TX; Phoenix, AZ; Kansas City, MO; and Tulsa, AL, and restricting the analysis to victims who are White or Black, **`r nrow(homicide_city)`** cases remain. Victim age is stored as numeric; during cleaning, **`r sum(is.na(homicide_city$victim_age))`** records had non-numeric ages and were dropped from analysis.
 
 ## A. Baltimore, MD – logistic regression and adjusted OR
-
 ```{r}
 baltimore_df <- homicide_city |>
   filter(city_state == "Baltimore, MD")
@@ -85,7 +84,7 @@ baltimore_or <- baltimore_fit |>
 baltimore_or
 ```
 
-Summary: In Baltimore, the adjusted odds ratio for solving a homicide when a victim is **male** (compared to female victims), controlling for age and race, is **`r round(baltimore_or$estimate, 2)`**, with a 95% confidence interval (CI) of (`r round(baltimore_or$conf.low, 2)`, `r round(baltimore_or$conf.high, 2)`).
+Summary: In Baltimore, the adjusted odds ratio for solving a homicide when a victim is **male** (compared to female victims), controlling for age and race, is **`r round(baltimore_or$estimate, 2)`**, with a 95% confidence interval (CI) of **(`r round(baltimore_or$conf.low, 2)`**, **`r round(baltimore_or$conf.high, 2)`)**.
 
 ## B. Logistic Regression Fitting
 ```{r}
@@ -115,14 +114,19 @@ city_models <- homicide_city |>
 city_models
 
 # For Summary 
+# For Summary (overall across all cities)
 or_summary <- city_models |>
+  ungroup() |>                      # <--- this is the key line
   summarise(
-    min_or   = min(estimate),
-    max_or   = max(estimate),
-    n_gt1    = sum(conf.low > 1),
-    n_lt1    = sum(conf.high < 1),
-    n_cross1 = sum(conf.low <= 1 & conf.high >= 1)
+    min_or   = min(estimate, na.rm = TRUE),
+    max_or   = max(estimate, na.rm = TRUE),
+    n_gt1    = sum(conf.low > 1, na.rm = TRUE),
+    n_lt1    = sum(conf.high < 1, na.rm = TRUE),
+    n_cross1 = sum(conf.low <= 1 & conf.high >= 1, na.rm = TRUE)
   )
+
+or_summary
+
 ```
 
 Summary: Across all cities, the adjusted odds ratios for solving homicides involving male victims range from **`r round(or_summary$min_or, 2)`** to **`r round(or_summary$max_or, 2)`**. In **`r or_summary$n_gt1`** cities, the 95% CI lies entirely above 1, indicating higher odds of case resolution for male victims; in **`r or_summary$n_lt1`** cities, the interval lies entirely below 1; and in **`r or_summary$n_cross1`** cities, the CI includes 1, suggesting no clear difference by victim sex.
@@ -161,7 +165,7 @@ weather_lm_df <- weather_df |>
   drop_na(tmax, tmin, prcp)
 ```
  
-## Bootstrap and Model Fitting
+## A. Bootstrap and Model Fitting
 
 ```{r}
 set.seed(8105)
@@ -192,7 +196,7 @@ boot_results <- boot_samples |>
 head(boot_results)
 ```
 
-## 95% bootstrap CIs 
+## B. 95% bootstrap CIs 
 ```{r}
 # 95% CI for R^2
 r2_ci <- boot_results |>
@@ -216,7 +220,7 @@ beta_ci
 
 Summary: The bootstrap distribution of R² has a median of **`r round(r2_ci$median, 3)`**, with a 95% interval from **`r round(r2_ci$lower, 3)`** to **`r round(r2_ci$upper, 3)`**. For the coefficient product \(\hat{\beta}_{tmin}\hat{\beta}_{prcp}\), the median is **`r signif(beta_ci$median, 3)`**, with a 95% interval of **(`r signif(beta_ci$lower, 3)`**, **`r signif(beta_ci$upper, 3)`)**.
 
-## Distribution Plots
+## D. Distribution Plots
 ```{r}
 # Distribution plot of R^2
 boot_results |>
@@ -249,9 +253,9 @@ boot_results |>
   )
 ```
 
-Summary:Across the 5000 bootstrap samples, the R² values are tightly concentrated, with a median of `r round(r2_ci$median, 3)` and a 95% interval from `r round(r2_ci$lower, 3)` to `r round(r2_ci$upper, 3)`. This suggests that the linear model with *tmin* and *prcp* consistently explains a moderate proportion of the variability in *tmax* across resampled datasets.
+Summary: Across the 5000 bootstrap samples, the R² values are tightly concentrated, with a median of **`r round(r2_ci$median, 3)`** and a 95% interval from **`r round(r2_ci$lower, 3)`** to **`r round(r2_ci$upper, 3)`**. This suggests that the linear model with *tmin* and *prcp* consistently explains a moderate proportion of the variability in *tmax* across resampled datasets.
 
-The bootstrap distribution of the product \(\hat{\beta}_{tmin}\hat{\beta}_{prcp}\) is centered around `r signif(beta_ci$median, 3)`, with a 95% interval of (`r signif(beta_ci$lower, 3)`, `r signif(beta_ci$upper, 3)`). The spread and sign of this distribution reflect both the magnitudes and directions of the *tmin* and *prcp* coefficients, illustrating the uncertainty in their combined contribution to predicting *tmax*.
+The bootstrap distribution of the product \(\hat{\beta}_{tmin}\hat{\beta}_{prcp}\) is centered around **`r signif(beta_ci$median, 3)`**, with a 95% interval of **(`r signif(beta_ci$lower, 3)`**, **`r signif(beta_ci$upper, 3)`)**. The spread and sign of this distribution reflect both the magnitudes and directions of the *tmin* and *prcp* coefficients, illustrating the uncertainty in their combined contribution to predicting *tmax*.
 
 # Problem 3 -- Birthweight and Linear Models
 ```{r}
@@ -271,7 +275,8 @@ birth_missing <- birth_df |>
   pivot_longer(everything(), names_to = "variable", values_to = "n_missing") |>
   arrange(desc(n_missing))
 ```
-Summary: The cleaned birthweight dataset contains `r nrow(birth_df)` observations on `r ncol(birth_df)` variables. Key predictors include maternal characteristics (e.g., pre-pregnancy BMI, weight gain, age, race, smoking) and infant characteristics (e.g., head circumference, length, gestational age, sex). A check for missingness shows a total of `r sum(birth_missing$n_missing)` missing values across all variables, indicating that the dataset is effectively complete for regression modeling.
+
+Summary: The cleaned birthweight dataset contains **`r nrow(birth_df)`** observations on **`r ncol(birth_df)`** variables. Key predictors include maternal characteristics (e.g., pre-pregnancy BMI, weight gain, age, race, smoking) and infant characteristics (e.g., head circumference, length, gestational age, sex). A check for missingness shows a total of **`r sum(birth_missing$n_missing)`** missing values across all variables, indicating that the dataset is effectively complete for regression modeling.
 
 ## A. Proposed regression model
 ```{r}
@@ -286,7 +291,8 @@ birth_model_main_tidy <- tidy(birth_model_main)
 birth_model_main_glance <- glance(birth_model_main)
 birth_model_main_glance
 ```
-Summary: The proposed model uses birthweight (*bwt*) as the outcome and includes fetal size at birth (head circumference *bhead*, length *blength*), gestational age (*gaweeks*), maternal anthropometrics and behaviors (*ppbmi*, *wtgain*, *smoken*, *momage*), socioeconomic status (*fincome*), maternal race (*mrace*), and infant sex (*babysex*) as predictors. The model explains `r round(birth_model_main_glance$r.squared, 3)` of the variation in birthweight, indicating a strong association between these clinical and demographic factors and infant weight.
+
+Summary: The proposed model uses birthweight (*bwt*) as the outcome and includes fetal size at birth (head circumference *bhead*, length *blength*), gestational age (*gaweeks*), maternal anthropometrics and behaviors (*ppbmi*, *wtgain*, *smoken*, *momage*), socioeconomic status (*fincome*), maternal race (*mrace*), and infant sex (*babysex*) as predictors. The model explains **`r round(birth_model_main_glance$r.squared, 3)`** of the variation in birthweight, indicating a strong association between these clinical and demographic factors and infant weight.
 
 B. Residuals--Fitted Values
 ```{r}
@@ -343,7 +349,7 @@ cv_df <- cv_df |>
     rmse_interact = map2_dbl(mod_interact, test, ~ rmse(.x, .y))
   )
 
-# Gather RMSEs into long format
+# RMSEs into long format
 rmse_long <- cv_df |>
   select(rmse_main, rmse_len_ga, rmse_interact) |>
   pivot_longer(
@@ -387,4 +393,4 @@ rmse_long |>
   theme(legend.position = "none")
 ```
 
-Summary: Cross-validated prediction errors differ meaningfully across models. The mean RMSE for the proposed model is about `r round(rmse_summary$mean_rmse[rmse_summary$model == 'Proposed model'], 1)` grams, compared to `r round(rmse_summary$mean_rmse[rmse_summary$model == 'Length + gestational age'], 1)` grams for the simpler length + gestational-age model and `r round(rmse_summary$mean_rmse[rmse_summary$model == 'Head × length × sex (all interactions)'], 1)` grams for the highly interactive model. Overall, the `r rmse_summary$model[which.min(rmse_summary$mean_rmse)]` yields the lowest average RMSE, indicating the best out-of-sample predictive performance while balancing flexibility and stability.
+Summary: Cross-validated prediction errors differ meaningfully across models. The mean RMSE for the proposed model is about `r round(rmse_summary$mean_rmse[rmse_summary$model == 'Proposed model'], 1)` grams, compared to **`r round(rmse_summary$mean_rmse[rmse_summary$model == 'Length + gestational age'], 1)`** grams for the simpler length + gestational-age model and **`r round(rmse_summary$mean_rmse[rmse_summary$model == 'Head × length × sex (all interactions)'], 1)`** grams for the highly interactive model. Overall, the **`r rmse_summary$model[which.min(rmse_summary$mean_rmse)]`** yields the lowest average RMSE, indicating the best out-of-sample predictive performance while balancing flexibility and stability.
