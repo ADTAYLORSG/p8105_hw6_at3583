@@ -148,10 +148,44 @@ city_models |>
   )
 ```
 Summary: Most cities have adjusted odds ratios close to 1, suggesting similar odds of solving homicides for male and female victims after controlling for age and race. A few cities show odds ratios clearly above 1, with CIs entirely above the null, indicating higher resolution rates for male victims. Other display wide intervals that cross 1, reflecting limited sample sizes and greater data uncertainty in sex-specific differences.
+
+# Problem 2 -- Bootstrap for R^2 and \hat\beta_1 \hat\beta_2
   
 ```{r}
-  
-    
-  
-  
-  
+# Load and clean Central Park data
+
+data("weather_df")
+weather_lm_df <- weather_df |>
+  drop_na(tmax, tmin, prcp)
+```
+ 
+## Bootstrap and Model Fitting
+
+```{r}
+set.seed(8105)
+
+# 5000 bootstrap samples
+boot_samples <- weather_lm_df |>
+  modelr::bootstrap(n = 5000, id = "boot_id")
+
+# Generate results
+boot_results <- boot_samples |>
+  mutate(
+    model   = map(strap, ~ lm(tmax ~ tmin + prcp, data = .x)),
+    glanced = map(model, glance),
+    tidied  = map(model, tidy)
+  ) |>
+  transmute(
+    boot_id,
+    r_sq = map_dbl(glanced, "r.squared"),
+    beta_prod = map_dbl(
+      tidied,
+      ~ .x |>
+        filter(term %in% c("tmin", "prcp")) |>
+        summarize(prod = prod(estimate)) |>
+        pull(prod)
+    )
+  )
+
+head(boot_results)
+```
