@@ -63,8 +63,7 @@ homicide_city <- homicide_df |>
   drop_na(solved, victim_age, victim_sex, victim_race)
 ```
 
-Summary: The cleaned dataset contains **`r nrow(homicide_city)`** homicide records across  
-**`r n_distinct(homicide_city$city_state)`** cities. After excluding Dallas, TX; Phoenix, AZ; Kansas City, MO; and Tulsa, AL, and restricting the analysis to victims who are White or Black, **`r nrow(homicide_city)`** cases remain. Victim age is stored as numeric; during cleaning, **`r sum(is.na(homicide_city$victim_age))`** records had non-numeric ages and were dropped from analysis.
+Summary: The cleaned dataset contains **`r nrow(homicide_city)`** homicide records across  **`r n_distinct(homicide_city$city_state)`** cities. After excluding Dallas, TX; Phoenix, AZ; Kansas City, MO; and Tulsa, AL, and restricting the analysis to victims who are White or Black, **`r nrow(homicide_city)`** cases remain. Victim age is stored as numeric; during cleaning, **`r sum(is.na(homicide_city$victim_age))`** records had non-numeric ages and were dropped from analysis.
 
 ## A. Baltimore, MD – logistic regression and adjusted OR
 ```{r}
