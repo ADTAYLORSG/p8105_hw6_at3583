@@ -252,3 +252,25 @@ boot_results |>
 Summary:Across the 5000 bootstrap samples, the R² values are tightly concentrated, with a median of `r round(r2_ci$median, 3)` and a 95% interval from `r round(r2_ci$lower, 3)` to `r round(r2_ci$upper, 3)`. This suggests that the linear model with *tmin* and *prcp* consistently explains a moderate proportion of the variability in *tmax* across resampled datasets.
 
 The bootstrap distribution of the product \(\hat{\beta}_{tmin}\hat{\beta}_{prcp}\) is centered around `r signif(beta_ci$median, 3)`, with a 95% interval of (`r signif(beta_ci$lower, 3)`, `r signif(beta_ci$upper, 3)`). The spread and sign of this distribution reflect both the magnitudes and directions of the *tmin* and *prcp* coefficients, illustrating the uncertainty in their combined contribution to predicting *tmax*.
+
+# Problem 3 -- Birthweight and Linear Models
+```{r}
+# Load and clean birthweight data
+birth_df <- read_csv("data/birthweight.csv") |>
+  clean_names() |>
+  mutate(
+    babysex = factor(babysex),
+    frace   = factor(frace),
+    mrace   = factor(mrace),
+    malform = factor(malform)
+  )
+
+# Check for missingness
+birth_missing <- birth_df |>
+  summarise(across(everything(), ~ sum(is.na(.)))) |>
+  pivot_longer(everything(), names_to = "variable", values_to = "n_missing") |>
+  arrange(desc(n_missing))
+```
+Summary: The cleaned birthweight dataset contains `r nrow(birth_df)` observations on `r ncol(birth_df)` variables. Key predictors include maternal characteristics (e.g., pre-pregnancy BMI, weight gain, age, race, smoking) and infant characteristics (e.g., head circumference, length, gestational age, sex). A check for missingness shows a total of `r sum(birth_missing$n_missing)` missing values across all variables, indicating that the dataset is effectively complete for regression modeling.
+
+
