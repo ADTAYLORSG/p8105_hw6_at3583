@@ -273,4 +273,17 @@ birth_missing <- birth_df |>
 ```
 Summary: The cleaned birthweight dataset contains `r nrow(birth_df)` observations on `r ncol(birth_df)` variables. Key predictors include maternal characteristics (e.g., pre-pregnancy BMI, weight gain, age, race, smoking) and infant characteristics (e.g., head circumference, length, gestational age, sex). A check for missingness shows a total of `r sum(birth_missing$n_missing)` missing values across all variables, indicating that the dataset is effectively complete for regression modeling.
 
+## A. Proposed regression model
+```{r}
+# Proposed model for birthweight
+birth_model_main <- lm(
+  bwt ~ babysex + bhead + blength + gaweeks +
+    ppbmi + wtgain + smoken + momage + mrace + fincome,
+  data = birth_df
+)
 
+birth_model_main_tidy <- tidy(birth_model_main)
+birth_model_main_glance <- glance(birth_model_main)
+birth_model_main_glance
+```
+Summary: The proposed model uses birthweight (*bwt*) as the outcome and includes fetal size at birth (head circumference *bhead*, length *blength*), gestational age (*gaweeks*), maternal anthropometrics and behaviors (*ppbmi*, *wtgain*, *smoken*, *momage*), socioeconomic status (*fincome*), maternal race (*mrace*), and infant sex (*babysex*) as predictors. The model explains `r round(birth_model_main_glance$r.squared, 3)` of the variation in birthweight, indicating a strong association between these clinical and demographic factors and infant weight.
